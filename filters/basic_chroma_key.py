@@ -14,7 +14,7 @@ from .utils import rgb2hexstr
 
 
 class BasicChromaKey(BaseFilter):
-    def __init__(self, args, img, gt_mask, gt_ignore):
+    def __init__(self, args, img, gt_mask, gt_ignore=None):
         super().__init__()
         self.device = args.device
         self.n_sample = args.n_sample
@@ -36,7 +36,10 @@ class BasicChromaKey(BaseFilter):
         self.img_ch = self.img[:, self.ch_sel]
 
         self.gt_mask = torch.from_numpy(gt_mask).to(self.device).float().unsqueeze(0)
-        self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0)
+        if gt_ignore is None:
+            self.gt_ignore = None
+        else:
+            self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0)
 
         self.sample_parameters()
 
@@ -93,8 +96,9 @@ class BasicChromaKey(BaseFilter):
         # L1 loss
 
         loss = (masks - self.gt_mask).abs()
-        ignore_mask = self.gt_ignore.expand(this_batch_size, -1, -1)
-        loss[ignore_mask] = 0
+        if self.gt_ignore is not None:
+            ignore_mask = self.gt_ignore.expand(this_batch_size, -1, -1)
+            loss[ignore_mask] = 0
         loss = loss.view(this_batch_size, -1)
         loss = loss.sum(1)
 

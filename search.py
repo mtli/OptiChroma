@@ -46,8 +46,11 @@ def main():
 
     img = Image.open(args.input)
     gt_mask = np.array(Image.open(args.gt_mask).convert('L'))
-    gt_ignore = np.array(Image.open(args.gt_ignore).convert('L')) < 128
-
+    if args.gt_ignore:
+        gt_ignore = np.array(Image.open(args.gt_ignore).convert('L')) < 128
+    else:
+        gt_ignore = None
+        
     with torch.no_grad():
         if args.seed is not None:
             torch.manual_seed(args.seed)
