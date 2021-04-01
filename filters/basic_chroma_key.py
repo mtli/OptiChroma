@@ -14,7 +14,7 @@ from .utils import rgb2hexstr
 
 
 class BasicChromaKey(BaseFilter):
-    def __init__(self, args):
+    def __init__(self, args, img, gt_mask, gt_ignore):
         super().__init__()
         self.device = args.device
         self.n_sample = args.n_sample
@@ -28,18 +28,15 @@ class BasicChromaKey(BaseFilter):
         else:
             raise ValueError(f'Unsupported color space: {self.color_space}')
 
-        self.in_img = Image.open(args.input)
+        self.in_img = img
         img = np.array(self.in_img.convert(self.color_space))
         img = torch.from_numpy(img).to(self.device).float()
         # to BxCxHxW
         self.img = img.permute(2, 0, 1).unsqueeze(0)
         self.img_ch = self.img[:, self.ch_sel]
 
-        gt = np.array(Image.open(args.gt_mask).convert('L'))
-        gt_ignore = np.array(Image.open(args.gt_ignore).convert('L'))
-
-        self.gt = torch.from_numpy(gt).to(self.device).float().unsqueeze(0)
-        self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0) < 128
+        self.gt_mask = torch.from_numpy(gt_mask).to(self.device).float().unsqueeze(0)
+        self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0)
 
         self.sample_parameters()
 
@@ -95,7 +92,7 @@ class BasicChromaKey(BaseFilter):
         
         # L1 loss
 
-        loss = (masks - self.gt).abs()
+        loss = (masks - self.gt_mask).abs()
         ignore_mask = self.gt_ignore.expand(this_batch_size, -1, -1)
         loss[ignore_mask] = 0
         loss = loss.view(this_batch_size, -1)

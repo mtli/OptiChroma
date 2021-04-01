@@ -25,13 +25,13 @@ class OBSChromaKey(BaseFilter):
     ]
     color_cvt_bias = 0.501961 
 
-    def __init__(self, args):
+    def __init__(self, args, img, gt_mask, gt_ignore):
         super().__init__()
         self.device = args.device
         self.n_sample = args.n_sample
         self.color_space = 'OBS YCbCr'
 
-        self.in_img = Image.open(args.input).convert('RGB')
+        self.in_img = img.convert('RGB')
         img = np.array(self.in_img)
         img = torch.from_numpy(img).to(self.device).float()
         # to CxHxW
@@ -52,11 +52,8 @@ class OBSChromaKey(BaseFilter):
         # to BxCx9x(HxW)
         self.img = F.unfold(img, 3).view(1, 2, 9, self.h*self.w)
 
-        gt = np.array(Image.open(args.gt_mask).convert('L'))
-        gt_ignore = np.array(Image.open(args.gt_ignore).convert('L'))
-
-        self.gt = torch.from_numpy(gt).to(self.device).float().unsqueeze(0)
-        self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0) < 128
+        self.gt_mask = torch.from_numpy(gt_mask).to(self.device).float().unsqueeze(0)
+        self.gt_ignore = torch.from_numpy(gt_ignore).to(self.device).unsqueeze(0)
 
         self.sample_parameters()
 
@@ -101,7 +98,7 @@ class OBSChromaKey(BaseFilter):
         )
         
         # L1 loss
-        loss = (masks - self.gt).abs()
+        loss = (masks - self.gt_mask).abs()
         ignore_mask = self.gt_ignore.expand(this_batch_size, -1, -1)
         loss[ignore_mask] = 0
         loss = loss.view(this_batch_size, -1)

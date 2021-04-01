@@ -44,11 +44,15 @@ def parse_args():
 def main():
     args = parse_args()
 
+    img = Image.open(args.input)
+    gt_mask = np.array(Image.open(args.gt_mask).convert('L'))
+    gt_ignore = np.array(Image.open(args.gt_ignore).convert('L')) < 128
+
     with torch.no_grad():
         if args.seed is not None:
             torch.manual_seed(args.seed)
 
-        fil = vars(filters)[args.filter](args)
+        fil = vars(filters)[args.filter](args, img, gt_mask, gt_ignore)
 
         loss_all = torch.empty(args.n_sample, dtype=torch.float, device=args.device)
 
